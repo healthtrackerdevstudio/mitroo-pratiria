@@ -10,7 +10,7 @@
   Η εφαρμογή αυτή αναπτύχθηκε για εσωτερική χρήση του τμήματος.
   Απαγορεύεται η αναδημοσίευση ή χρήση χωρίς άδεια του δημιουργού.
 
-  Έκδοση: v4.05
+  Έκδοση: v4.06
   Ημερομηνία: Μάρτιος 2026
   Επικοινωνία: ilias.papadakis@office365.attica.gov.gr
 =======================================================================
@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Πρωτόκολλο Εγκαταστάσεων v4.05</title>
+<title>Πρωτόκολλο Εγκαταστάσεων v4.06</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -92,10 +92,10 @@ input,select,textarea{font-family:inherit}
 
 /* ── NAV ── */
 .nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;gap:0}
-.nav-btn{background:none;border:none;border-bottom:2px solid transparent;padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);transition:all .15s;display:flex;align-items:center;gap:6px}
+.nav-btn{background:none;border:none;border-bottom:2px solid transparent;padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);transition:all .15s;display:flex;align-items:center;gap:6px;position:relative}
 .nav-btn:hover{color:var(--text)}
 .nav-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-.nav-badge{background:var(--accent-light);color:var(--accent);font-size:11px;padding:1px 6px;border-radius:10px;font-weight:600}
+.nav-badge{display:inline-block;margin-left:4px;background:var(--accent);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;min-width:16px;text-align:center;vertical-align:middle;position:static}
 
 /* ── MAIN CONTENT ── */
 .main{padding:20px;flex:1}
@@ -394,7 +394,7 @@ const MiniDocGen = {
     </div>
     <div id="login-error" class="login-error" style="display:none"></div>
     <button class="btn btn-primary btn-full login-btn" onclick="doLogin()">Είσοδος</button>
-    <p class="login-footer">© 2026 Η.Π. — v4.05</p>
+    <p class="login-footer">© 2026 Η.Π. — v4.06</p>
   </div>
 </div>
 
@@ -403,7 +403,7 @@ const MiniDocGen = {
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand"><div class="dot"></div>Πρωτόκολλο Εγκαταστάσεων</div>
-    <span class="topbar-ver">v4.05</span>
+    <span class="topbar-ver">v4.06</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
     <button class="btn btn-secondary btn-sm" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
@@ -423,7 +423,7 @@ const MiniDocGen = {
     <button class="nav-btn" onclick="showView('certs')" id="nav-certs">📄 Στοιχεία & Πιστοποιητικά <span class="nav-badge" id="badge-certs">0</span></button>
     <button class="nav-btn" onclick="showView('equip')" id="nav-equip">🔧 Εξοπλισμός <span class="nav-badge" id="badge-equip">0</span></button>
     <button class="nav-btn" onclick="showView('stats')" id="nav-stats">📊 Στατιστικά Πρωτ.</button>
-    <button class="nav-btn" onclick="showView('inst-stats')" id="nav-inst-stats">🏢 Στατιστικά Εγκ.</button>
+    <button class="nav-btn" onclick="showView('inst-stats')" id="nav-inst-stats">🏢 Στατιστικά Εγκατ.</button>
     <button class="nav-btn" onclick="showView('map')" id="nav-map">🗺️ Χάρτης</button>
     <button class="nav-btn" onclick="showView('docgen')" id="nav-docgen">📄 Doc Generator</button>
     <button class="nav-btn" onclick="showView('nomos')" id="nav-nomos">📚 Νομοθεσία <span class="nav-badge" id="badge-nomos">0</span></button>
@@ -1846,7 +1846,7 @@ function loadData(){
       nomosIndex = JSON.parse(localStorage.getItem(KEYS.nomos)||'[]');
       _afterLoad();
       // Real-time listeners για κοινά
-      fbListen('installations', function(d){ installations=d; updateBadges(); renderInst(); renderDash(); });
+      fbListen('installations', function(d){ installations=d; updateBadges(); renderInst(); renderDash(); renderInstStats(); });
       fbListen('certificates',  function(d){ certificates=d;  updateBadges(); renderCerts(); });
       fbListen('equipment',     function(d){ equipment=d;     renderEquip(); });
     });
@@ -1950,7 +1950,7 @@ function backupShared(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0');
   const payload={
-    version:'v4.05',
+    version:'v4.06',
     exported_at:now.toISOString(),
     type:'shared',
     inst:installations,
@@ -1999,7 +1999,7 @@ function backupData(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+''+String(now.getMinutes()).padStart(2,'0');
   const payload={
-    version:'v4.05',
+    version:'v4.06',
     exported_at:now.toISOString(),
     inst:installations,
     proto:protocol,
@@ -4329,7 +4329,7 @@ function printInstReport(fak){
   if(equipList.length) win.document.write('<div style="margin-bottom:8px">'+equipList.map(function(e){return '<span style="background:#f0f0f0;padding:2px 8px;border-radius:3px;margin-right:4px;font-size:11px">✓ '+e+'</span>';}).join('')+'</div>');
   win.document.write('<strong>Δεξαμενές:</strong>'+tanksHtml);
   win.document.write('<h2>📄 Πιστοποιητικά</h2>'+certsHtml);
-  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.05</div>');
+  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.06</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.focus();
