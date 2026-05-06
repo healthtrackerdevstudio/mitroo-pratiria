@@ -10,7 +10,7 @@
   Η εφαρμογή αυτή αναπτύχθηκε για εσωτερική χρήση του τμήματος.
   Απαγορεύεται η αναδημοσίευση ή χρήση χωρίς άδεια του δημιουργού.
 
-  Έκδοση: v4.03
+  Έκδοση: v4.04
   Ημερομηνία: Μάρτιος 2026
   Επικοινωνία: ilias.papadakis@office365.attica.gov.gr
 =======================================================================
@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Πρωτόκολλο Εγκαταστάσεων v4.03</title>
+<title>Πρωτόκολλο Εγκαταστάσεων v4.04</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -393,7 +393,7 @@ const MiniDocGen = {
     </div>
     <div id="login-error" class="login-error" style="display:none"></div>
     <button class="btn btn-primary btn-full login-btn" onclick="doLogin()">Είσοδος</button>
-    <p class="login-footer">© 2026 Η.Π. — v4.03</p>
+    <p class="login-footer">© 2026 Η.Π. — v4.04</p>
   </div>
 </div>
 
@@ -402,7 +402,7 @@ const MiniDocGen = {
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand"><div class="dot"></div>Πρωτόκολλο Εγκαταστάσεων</div>
-    <span class="topbar-ver">v4.03</span>
+    <span class="topbar-ver">v4.04</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
     <button class="btn btn-secondary btn-sm" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
@@ -1949,7 +1949,7 @@ function backupShared(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0');
   const payload={
-    version:'v4.03',
+    version:'v4.04',
     exported_at:now.toISOString(),
     type:'shared',
     inst:installations,
@@ -1998,7 +1998,7 @@ function backupData(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+''+String(now.getMinutes()).padStart(2,'0');
   const payload={
-    version:'v4.03',
+    version:'v4.04',
     exported_at:now.toISOString(),
     inst:installations,
     proto:protocol,
@@ -2115,11 +2115,34 @@ function autoBackupOnLogout(){
   }catch(e){console.error('Auto backup failed:',e);}
 }
 window.onload=()=>{
-  if(sessionStorage.getItem('auth')){
-    document.getElementById('l-user').value=CREDS.user;
-    doLogin();
+  if(USE_FIREBASE){
+    // Firebase mode: αρχικοποίηση και έλεγχος auth state
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.firestore();
+    window.fbAuth=firebase.auth();
+    window.fbAuth.onAuthStateChanged(function(user){
+      if(user){
+        const username=user.email.split('@')[0];
+        const role=user.email.startsWith('admin')?'admin':user.email.startsWith('guest')?'guest':'user';
+        _serverRole=role;
+        sessionStorage.setItem('auth','1');
+        sessionStorage.setItem('fb_email',user.email);
+        sessionStorage.setItem('fb_role',role);
+        afterLogin(username);
+      } else {
+        document.getElementById('login-screen').style.display='flex';
+        document.getElementById('app').style.display='none';
+        setTimeout(function(){ const el=document.getElementById('l-user'); if(el) el.focus(); },100);
+      }
+    });
   } else {
-    document.getElementById('l-user').focus();
+    // Local mode
+    if(sessionStorage.getItem('auth')){
+      document.getElementById('l-user').value=CREDS.user;
+      doLogin();
+    } else {
+      document.getElementById('l-user').focus();
+    }
   }
 };
 
@@ -4305,7 +4328,7 @@ function printInstReport(fak){
   if(equipList.length) win.document.write('<div style="margin-bottom:8px">'+equipList.map(function(e){return '<span style="background:#f0f0f0;padding:2px 8px;border-radius:3px;margin-right:4px;font-size:11px">✓ '+e+'</span>';}).join('')+'</div>');
   win.document.write('<strong>Δεξαμενές:</strong>'+tanksHtml);
   win.document.write('<h2>📄 Πιστοποιητικά</h2>'+certsHtml);
-  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.03</div>');
+  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.04</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.focus();
