@@ -1673,8 +1673,14 @@ async function fbLoad(collection){
   if(!db) return null;
   try {
     const doc = await db.collection(collection).doc('data').get();
-    if(doc.exists) return doc.data().items || [];
-    return [];
+    if(!doc.exists) return [];
+    const data = doc.data();
+    // Υποστήριξη και array και JSON string
+    let items = data.items;
+    if(typeof items === 'string'){
+      try { items = JSON.parse(items); } catch(e){ items = []; }
+    }
+    return Array.isArray(items) ? items : [];
   } catch(e) { console.error('fbLoad error:', collection, e); return null; }
 }
 
@@ -1825,7 +1831,7 @@ function save(key,data){
   // Firebase: protocol ανά χρήστη
   if(USE_FIREBASE && db && key==='proto'){
     const fbEmail=sessionStorage.getItem('fb_email')||'local';
-    const protoKey='protocol_'+fbEmail.replace(/[@.]/g,'_');
+    const protoKey='protocol_'+fbEmail.toLowerCase().replace(/[@.]/g,'_');
     fbSave(protoKey, data);
   }
   // LAN server fallback
@@ -2031,7 +2037,7 @@ function restoreData(input){
         // Ανέβασμα στο Firebase
         const fbEmail=sessionStorage.getItem('fb_email')||'';
         if(fbEmail && db){
-          const protoKey='protocol_'+fbEmail.replace(/[@.]/g,'_');
+          const protoKey='protocol_'+fbEmail.toLowerCase().replace(/[@.]/g,'_');
           fbSave(protoKey, protocol).then(function(){
             toast('✅ Πρωτόκολλο επαναφέρθηκε ('+protocol.length+' εγγραφές)','success');
           });
@@ -2070,7 +2076,7 @@ function afterLogin(username){
       }
       const fbEmail=sessionStorage.getItem('fb_email')||'';
       if(!fbEmail) return;
-      const protoKey='protocol_'+fbEmail.replace(/[@.]/g,'_');
+      const protoKey='protocol_'+fbEmail.toLowerCase().replace(/[@.]/g,'_');
       fbLoad(protoKey).then(function(data){
         if(data && data.length>0){
           protocol=data;
@@ -4150,7 +4156,9 @@ function renderInstStats(){
   const selYpef=getDdSelected('dd-is-ypef');
 
   let arr=[...installations].filter(function(i){return i.type!=='ΕΧΕΣ';});
-  if(fTypes_map_f_type.length>0) arr=arr.filter(function(i){return fTypes_map_f_type.includes(i.type);});
+  var _isTypeEl=document.getElementById('is-f-type');
+  var _isFTypes=_isTypeEl?Array.from(_isTypeEl.selectedOptions).map(function(o){return o.value;}).filter(function(v){return v!=='';}) :[];
+  if(_isFTypes.length>0) arr=arr.filter(function(i){return _isFTypes.includes(i.type);});
   if(selTopos.length) arr=arr.filter(function(i){return selTopos.includes(i.topothesia||'');});
 
   if(selStatus.length){
