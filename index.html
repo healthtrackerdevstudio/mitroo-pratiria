@@ -2419,11 +2419,10 @@ function showView(v){
   else if(v==='equip')renderEquip();
   else if(v==='stats')renderStats();
   else if(v==='inst-stats'){
-    // Αν τα δεδομένα δεν έχουν φορτωθεί ακόμα, περίμενε
-    if(installations.length===0 && USE_FIREBASE){
-      setTimeout(function(){ populateInstStatsFilters(); renderInstStats(); }, 500);
-    } else {
-      populateInstStatsFilters(); renderInstStats();
+    // Πάντα με timeout για να είναι σίγουρο ότι έχουν φορτωθεί τα δεδομένα
+    populateInstStatsFilters(); renderInstStats();
+    if(USE_FIREBASE){
+      setTimeout(function(){ populateInstStatsFilters(); renderInstStats(); }, 800);
     }
   }
   else if(v==='docgen'){dgInit();dgRenderKoinMgr&&dgRenderKoinMgr();}
