@@ -2088,9 +2088,15 @@ function restoreData(input){
   input.value='';
 }
 function afterLogin(username){
-  // Αποφυγή διπλής κλήσης
-  if(window._afterLoginCalled){ return; }
+  // Αποφυγή διπλής UI initialization
+  const alreadyCalled = window._afterLoginCalled;
   window._afterLoginCalled=true;
+  // Πάντα ενημέρωσε το role
+  const _fbEmailNow=sessionStorage.getItem('fb_email')||'';
+  if(_fbEmailNow){
+    _serverRole=_fbEmailNow.startsWith('admin')?'admin':_fbEmailNow.startsWith('guest')?'guest':'user';
+  }
+  if(alreadyCalled){ return; }
   document.getElementById('topbar-user').textContent=username;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
