@@ -10,7 +10,7 @@
   Η εφαρμογή αυτή αναπτύχθηκε για εσωτερική χρήση του τμήματος.
   Απαγορεύεται η αναδημοσίευση ή χρήση χωρίς άδεια του δημιουργού.
 
-  Έκδοση: v4.09
+  Έκδοση: v4.10
   Ημερομηνία: Μάρτιος 2026
   Επικοινωνία: ilias.papadakis@office365.attica.gov.gr
 =======================================================================
@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Μητρώο Εγκαταστάσεων v4.09</title>
+<title>Μητρώο Εγκαταστάσεων v4.10</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -395,7 +395,7 @@ const MiniDocGen = {
     </div>
     <div id="login-error" class="login-error" style="display:none"></div>
     <button class="btn btn-primary btn-full login-btn" onclick="doLogin()">Είσοδος</button>
-    <p class="login-footer">© 2026 Η.Π. — v4.09</p>
+    <p class="login-footer">© 2026 Η.Π. — v4.10</p>
   </div>
 </div>
 
@@ -404,15 +404,15 @@ const MiniDocGen = {
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand"><div class="dot"></div>Μητρώο Εγκαταστάσεων</div>
-    <span class="topbar-ver">v4.09</span>
+    <span class="topbar-ver">v4.10</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
     <button class="btn btn-secondary btn-sm" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
-    <button class="btn btn-secondary btn-sm" onclick="backupShared()" title="Backup μόνο Εγκαταστάσεις/Πιστοποιητικά/Εξοπλισμός">💾 Backup Κοινά</button>
+    <button class="btn btn-secondary btn-sm" id="btn-backup-kina" onclick="backupShared()" title="Backup μόνο Εγκαταστάσεις/Πιστοποιητικά/Εξοπλισμός">💾 Backup Κοινά</button>
     <label class="btn btn-primary btn-sm" style="cursor:pointer;display:none" id="btn-fb-upload-label" title="Ανέβασε αρχείο backup στο Firebase">☁️ Upload → Firebase<input type="file" accept=".json" style="display:none" onchange="importSharedToFirebase(this)"></label>
     <button class="btn btn-primary btn-sm" onclick="fbImportFromBackup()" id="btn-fb-import" title="Ανέβασε τα τοπικά δεδομένα στο Firebase" style="display:none">☁️ Upload to Firebase</button>
     <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" title="Φόρτωση δεδομένων από αρχείο backup">📂 Restore<input type="file" accept=".json" style="display:none" onchange="restoreData(this)"></label>
-    <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0;background:#e8f5e9;border-color:#4caf50;color:#2e7d32" title="Εισαγωγή ΜΟΝΟ κινήσεων πρωτοκόλλου από JSON">📋 Εισαγ. Πρωτοκόλλου<input type="file" accept=".json" style="display:none" onchange="importProtoOnly(this)"></label>
+    <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0;background:#e8f5e9;border-color:#4caf50;color:#2e7d32" id="btn-eisag-proto" title="Εισαγωγή ΜΟΝΟ κινήσεων πρωτοκόλλου από JSON">📋 Εισαγ. Πρωτοκόλλου<input type="file" accept=".json" style="display:none" onchange="importProtoOnly(this)"></label>
     <button class="btn-logout" onclick="doLogout()">Έξοδος</button>
   </div>
 
@@ -1984,7 +1984,7 @@ function backupShared(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0');
   const payload={
-    version:'v4.09',
+    version:'v4.10',
     exported_at:now.toISOString(),
     type:'shared',
     inst:installations,
@@ -2033,7 +2033,7 @@ function backupData(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+''+String(now.getMinutes()).padStart(2,'0');
   const payload={
-    version:'v4.09',
+    version:'v4.10',
     exported_at:now.toISOString(),
     inst:installations,
     proto:protocol,
@@ -2088,6 +2088,9 @@ function restoreData(input){
   input.value='';
 }
 function afterLogin(username){
+  // Αποφυγή διπλής κλήσης
+  if(window._afterLoginCalled){ return; }
+  window._afterLoginCalled=true;
   document.getElementById('topbar-user').textContent=username;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
@@ -2132,17 +2135,25 @@ function afterLogin(username){
         'button[onclick*="openProtoModal"], button[onclick*="deleteProto"],' +
         '.btn-primary:not(.guest-ok), .btn-danger'
       ).forEach(function(b){ b.style.display='none'; });
+      // Κρύψε topbar κουμπιά με IDs
+      ['btn-fb-upload-label','btn-fb-import','btn-eisag-proto','btn-backup-kina'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el) el.style.display='none';
+      });
       // Κρύψε Nav Πρωτόκολλο και Doc Generator
       var navProto=document.getElementById('nav-proto');
       var navDocgen=document.getElementById('nav-docgen');
       if(navProto) navProto.style.display='none';
       if(navDocgen) navDocgen.style.display='none';
-      // Badge Επισκέπτης
-      var badge=document.createElement('span');
-      badge.textContent=' [Επισκέπτης]';
-      badge.style.cssText='color:#f97316;font-size:12px;margin-left:4px';
-      var tu=document.getElementById('topbar-user');
-      if(tu) tu.after(badge);
+      // Badge Επισκέπτης — μόνο μία φορά
+      if(!document.getElementById('guest-badge')){
+        var badge=document.createElement('span');
+        badge.id='guest-badge';
+        badge.textContent=' [Επισκέπτης]';
+        badge.style.cssText='color:#f97316;font-size:12px;margin-left:4px';
+        var tu=document.getElementById('topbar-user');
+        if(tu) tu.after(badge);
+      }
     }, 500);
   }
   loadData();
@@ -2151,6 +2162,7 @@ function afterLogin(username){
 }
 
 function doLogout(){
+  window._afterLoginCalled=false;
   autoBackupOnLogout();
   if(USE_FIREBASE && window.fbAuth) window.fbAuth.signOut().catch(function(){});
   sessionStorage.clear();
@@ -2171,13 +2183,13 @@ function autoBackupOnLogout(){
     // Firebase mode: backup μόνο πρωτόκολλο (τα κοινά είναι στο Firebase)
     // Local mode: backup όλα
     const data = USE_FIREBASE ? {
-      version:'v4.09',
+      version:'v4.10',
       exported: new Date().toISOString(),
       type:'protocol_only',
       user: fbEmail,
       protocol
     } : {
-      version:'v4.09',
+      version:'v4.10',
       exported: new Date().toISOString(),
       type:'full',
       installations,protocol,certificates,equipment
@@ -2774,6 +2786,7 @@ function typeTag(t,sub){
 }
 
 function openInstModal(fak=null){
+  if(_serverRole==='guest'){toast('⛔ Δεν έχεις δικαίωμα','error');return;}
   editInstId=fak;
   const i=fak?installations.find(x=>x.fak===fak):null;
   document.getElementById('modal-inst-title').textContent=fak?'Επεξεργασία Εγκατάστασης':'Νέα Εγκατάσταση';
@@ -2959,6 +2972,7 @@ function saveInst(){
   toast(editInstId?'Εγκατάσταση ενημερώθηκε':'Εγκατάσταση αποθηκεύτηκε','success');
 }
 function deleteInst(fak){
+  if(_serverRole==='guest'){toast('⛔ Δεν έχεις δικαίωμα','error');return;}
   installations=installations.filter(i=>i.fak!==fak);
   save('inst',installations);
   updateBadges();renderInst();renderDash();
@@ -3555,6 +3569,7 @@ function setCertRowLink(input){
 }
 
 function openCertModal(id=null, pfFak=null){
+  if(_serverRole==='guest'){toast('⛔ Δεν έχεις δικαίωμα','error');return;}
   try{
   editCertId=id||null;
   document.getElementById('modal-cert-title').textContent=id?'Επεξεργασία Πιστοποιητικού':'Νέα Καρτέλα Πιστοποιητικών';
@@ -3634,6 +3649,7 @@ function syncCertType(){}
 function getCertType(){return '';}
 
 function deleteCert(id){
+  if(_serverRole==='guest'){toast('⛔ Δεν έχεις δικαίωμα','error');return;}
   certificates=certificates.filter(c=>c._id!==id);
   save('certs',certificates);
   updateBadges();renderCerts();
@@ -3799,6 +3815,7 @@ function renderEquip(){
     (fuelHtml?`<span style="margin-left:16px;color:var(--text3)">|</span> <span style="font-size:12px;color:var(--text2)">Σύνολα: ${fuelHtml}</span>`:'');
 }
 function openEquipModal(fak=null){
+  if(_serverRole==='guest'){toast('⛔ Δεν έχεις δικαίωμα','error');return;}
   try{
   editEquipId=fak;
   const eq=fak?equipment.find(e=>e.fak===fak)||{}:{};
@@ -3997,6 +4014,7 @@ function saveEquip(){
   toast('Εξοπλισμός αποθηκεύτηκε','success');
 }
 function deleteEquip(fak){
+  if(_serverRole==='guest'){toast('⛔ Δεν έχεις δικαίωμα','error');return;}
   equipment=equipment.filter(e=>e.fak!==fak);
   save('equip',equipment);
   updateBadges();renderEquip();
@@ -4415,7 +4433,7 @@ function printInstReport(fak){
   if(equipList.length) win.document.write('<div style="margin-bottom:8px">'+equipList.map(function(e){return '<span style="background:#f0f0f0;padding:2px 8px;border-radius:3px;margin-right:4px;font-size:11px">✓ '+e+'</span>';}).join('')+'</div>');
   win.document.write('<strong>Δεξαμενές:</strong>'+tanksHtml);
   win.document.write('<h2>📄 Πιστοποιητικά</h2>'+certsHtml);
-  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.09</div>');
+  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.10</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.focus();
