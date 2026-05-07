@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Πρωτόκολλο Εγκαταστάσεων v4.08</title>
+<title>Μητρώο Εγκαταστάσεων v4.08</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -403,7 +403,7 @@ const MiniDocGen = {
 <div id="app">
   <!-- TOPBAR -->
   <div class="topbar">
-    <div class="topbar-brand"><div class="dot"></div>Πρωτόκολλο Εγκαταστάσεων</div>
+    <div class="topbar-brand"><div class="dot"></div>Μητρώο Εγκαταστάσεων</div>
     <span class="topbar-ver">v4.08</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
@@ -2062,9 +2062,12 @@ function afterLogin(username){
   if(USE_FIREBASE){ initFirebase(); setTimeout(updateFbButton, 1000); }
   // Φόρτωση protocol ανά χρήστη από Firebase
   if(USE_FIREBASE){
-    // Μικρή καθυστέρηση για να σιγουρευτούμε ότι το db είναι ready
-    setTimeout(function(){
-      if(!db) return;
+    function loadUserProtocol(attempt){
+      attempt = attempt||1;
+      if(!db){
+        if(attempt<5) setTimeout(function(){ loadUserProtocol(attempt+1); }, 500);
+        return;
+      }
       const fbEmail=sessionStorage.getItem('fb_email')||'';
       if(!fbEmail) return;
       const protoKey='protocol_'+fbEmail.replace(/[@.]/g,'_');
@@ -2073,10 +2076,16 @@ function afterLogin(username){
           protocol=data;
           save('proto',protocol);
           renderProto(); updateBadges(); renderDash();
-          toast('✅ Πρωτόκολλο φορτώθηκε ('+data.length+' εγγραφές)');
+          toast('✅ Πρωτόκολλο: '+data.length+' εγγραφές');
+        } else {
+          toast('ℹ️ Δεν βρέθηκε πρωτόκολλο για αυτόν τον χρήστη');
         }
-      }).catch(function(e){ console.error('Protocol load error:', e); });
-    }, 800);
+      }).catch(function(e){
+        console.error('Protocol load error:', e);
+        toast('⚠️ Σφάλμα φόρτωσης πρωτοκόλλου: '+e.message,'error');
+      });
+    }
+    setTimeout(loadUserProtocol, 1000);
   }
   // Guest: απόκρυψη κουμπιών επεξεργασίας
   if(SERVER_MODE && _serverRole==='guest'){
