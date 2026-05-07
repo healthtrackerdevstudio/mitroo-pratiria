@@ -10,7 +10,7 @@
   Η εφαρμογή αυτή αναπτύχθηκε για εσωτερική χρήση του τμήματος.
   Απαγορεύεται η αναδημοσίευση ή χρήση χωρίς άδεια του δημιουργού.
 
-  Έκδοση: v4.08
+  Έκδοση: v4.09
   Ημερομηνία: Μάρτιος 2026
   Επικοινωνία: ilias.papadakis@office365.attica.gov.gr
 =======================================================================
@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Μητρώο Εγκαταστάσεων v4.08</title>
+<title>Μητρώο Εγκαταστάσεων v4.09</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -395,7 +395,7 @@ const MiniDocGen = {
     </div>
     <div id="login-error" class="login-error" style="display:none"></div>
     <button class="btn btn-primary btn-full login-btn" onclick="doLogin()">Είσοδος</button>
-    <p class="login-footer">© 2026 Η.Π. — v4.08</p>
+    <p class="login-footer">© 2026 Η.Π. — v4.09</p>
   </div>
 </div>
 
@@ -404,7 +404,7 @@ const MiniDocGen = {
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand"><div class="dot"></div>Μητρώο Εγκαταστάσεων</div>
-    <span class="topbar-ver">v4.08</span>
+    <span class="topbar-ver">v4.09</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
     <button class="btn btn-secondary btn-sm" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
@@ -1014,7 +1014,20 @@ const MiniDocGen = {
     <div class="view" id="view-nomos">
       <div class="toolbar">
         <span class="toolbar-title">📚 Νομοθεσία</span>
-        <div class="search-box"><span class="search-icon">🔍</span><input id="nomos-search" placeholder="Αναζήτηση τίτλου, λέξης-κλειδί…" oninput="renderNomos()" onkeydown="clearOnEsc(this,'renderNomos')"></div>
+        <div class="search-box"><span class="search-icon">🔍</span><input id="nomos-search" placeholder="Αναζήτηση τίτλου, λέξης-κλειδί…" oninput="renderNomos()" onkeydown="clearOnEsc(this,'renderNomos')">
+        <!-- Nomos index buttons -->
+        <div style="display:flex;gap:6px;margin-left:auto">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" title="Εισαγωγή κοινού index νομοθεσίας (JSON) — ορατό σε όλους">
+            📥 Import Index (Κοινό)
+            <input type="file" accept=".json" style="display:none" onchange="importNomosShared(this)">
+          </label>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0;background:#f0fdf4;border-color:#86efac;color:#15803d" title="Εισαγωγή προσωπικής λίστας νομοθεσίας (JSON)">
+            📋 Import Προσωπικό
+            <input type="file" accept=".json" style="display:none" onchange="importNomosPersonal(this)">
+          </label>
+          <button class="btn btn-secondary btn-sm" onclick="exportNomosPersonal()" title="Εξαγωγή προσωπικής λίστας">💾 Export Προσωπικό</button>
+        </div>
+      </div>
         <select class="filter-select" id="nomos-f-folder" onchange="onNomosTopFolderChange()" style="min-width:180px">
           <option value="">Όλοι οι φάκελοι</option>
         </select>
@@ -1822,6 +1835,11 @@ async function loadDataFromServer() {
 
 // ══ PERSISTENCE ══
 function save(key,data){
+  // Guest: μπλοκάρισμα αποθήκευσης κοινών δεδομένων
+  if(_serverRole==='guest' && key!=='proto'){
+    toast('⛔ Δεν έχεις δικαίωμα τροποποίησης','error');
+    return;
+  }
   // Πάντα αποθήκευση στο localStorage (backup + πρωτόκολλο)
   try{localStorage.setItem(KEYS[key],JSON.stringify(data));}catch(e){}
   // Firebase: κοινά δεδομένα
@@ -1865,6 +1883,15 @@ function loadData(){
   certificates=JSON.parse(localStorage.getItem(KEYS.certs)||'[]');
   equipment=JSON.parse(localStorage.getItem(KEYS.equip)||'[]');
   nomosIndex=JSON.parse(localStorage.getItem(KEYS.nomos)||'[]');
+  // Προσωπική λίστα νομοθεσίας
+  const _fbE=sessionStorage.getItem('fb_email')||'local';
+  const _nomosPersonalKey='nomos_personal_'+_fbE.replace(/[@.]/g,'_');
+  const _nomosPersonal=JSON.parse(localStorage.getItem(_nomosPersonalKey)||'[]');
+  if(_nomosPersonal.length>0){
+    // Συγχώνευση
+    const _seen=new Set(nomosIndex.map(function(x){return x._id||x.title;}));
+    _nomosPersonal.forEach(function(x){ if(!_seen.has(x._id||x.title)) nomosIndex.push(x); });
+  }
   _afterLoad();
 }
 
@@ -1957,7 +1984,7 @@ function backupShared(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0');
   const payload={
-    version:'v4.08',
+    version:'v4.09',
     exported_at:now.toISOString(),
     type:'shared',
     inst:installations,
@@ -2006,7 +2033,7 @@ function backupData(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+''+String(now.getMinutes()).padStart(2,'0');
   const payload={
-    version:'v4.08',
+    version:'v4.09',
     exported_at:now.toISOString(),
     inst:installations,
     proto:protocol,
@@ -2093,15 +2120,30 @@ function afterLogin(username){
     }
     setTimeout(loadUserProtocol, 1000);
   }
-  // Guest: απόκρυψη κουμπιών επεξεργασίας
-  if(SERVER_MODE && _serverRole==='guest'){
-    document.querySelectorAll('.btn-primary:not(.guest-ok), .btn-danger, button[onclick*="deleteInst"], button[onclick*="deleteProto"], button[onclick*="deleteCert"], button[onclick*="deleteEquip"]').forEach(b=>{
-      b.style.display='none';
-    });
-    // Προσθήκη badge "Επισκέπτης"
-    const badge=document.createElement('span');
-    badge.textContent=' [Επισκέπτης]'; badge.style.color='#f97316'; badge.style.fontSize='12px';
-    document.getElementById('topbar-user').after(badge);
+  // Guest: απόκρυψη κουμπιών + μπλοκάρισμα
+  if(_serverRole==='guest'){
+    // Κρύψε όλα τα κουμπιά επεξεργασίας μετά από λίγο (να έχει φορτωθεί το DOM)
+    setTimeout(function(){
+      // Κουμπιά επεξεργασίας/διαγραφής
+      document.querySelectorAll(
+        'button[onclick*="openInstModal"], button[onclick*="deleteInst"],' +
+        'button[onclick*="openEquipModal"], button[onclick*="deleteEquip"],' +
+        'button[onclick*="openCertModal"], button[onclick*="deleteCert"],' +
+        'button[onclick*="openProtoModal"], button[onclick*="deleteProto"],' +
+        '.btn-primary:not(.guest-ok), .btn-danger'
+      ).forEach(function(b){ b.style.display='none'; });
+      // Κρύψε Nav Πρωτόκολλο και Doc Generator
+      var navProto=document.getElementById('nav-proto');
+      var navDocgen=document.getElementById('nav-docgen');
+      if(navProto) navProto.style.display='none';
+      if(navDocgen) navDocgen.style.display='none';
+      // Badge Επισκέπτης
+      var badge=document.createElement('span');
+      badge.textContent=' [Επισκέπτης]';
+      badge.style.cssText='color:#f97316;font-size:12px;margin-left:4px';
+      var tu=document.getElementById('topbar-user');
+      if(tu) tu.after(badge);
+    }, 500);
   }
   loadData();
   checkImportAvailable();
@@ -2109,13 +2151,17 @@ function afterLogin(username){
 }
 
 function doLogout(){
-  // Αυτόματο backup πριν την έξοδο
   autoBackupOnLogout();
-  sessionStorage.removeItem('auth');
-  document.getElementById('login-screen').style.display='flex';
-  document.getElementById('app').style.display='none';
-  document.getElementById('l-pass').value='';
-  document.getElementById('l-err').textContent='';
+  if(USE_FIREBASE && window.fbAuth) window.fbAuth.signOut().catch(function(){});
+  sessionStorage.clear();
+  var _ls=document.getElementById('login-screen');
+  var _ap=document.getElementById('app');
+  var _lp=document.getElementById('l-pass');
+  var _le=document.getElementById('l-err');
+  if(_ls) _ls.style.display='flex';
+  if(_ap) _ap.style.display='none';
+  if(_lp) _lp.value='';
+  if(_le) _le.textContent='';
 }
 
 function autoBackupOnLogout(){
@@ -2125,13 +2171,13 @@ function autoBackupOnLogout(){
     // Firebase mode: backup μόνο πρωτόκολλο (τα κοινά είναι στο Firebase)
     // Local mode: backup όλα
     const data = USE_FIREBASE ? {
-      version:'v4.08',
+      version:'v4.09',
       exported: new Date().toISOString(),
       type:'protocol_only',
       user: fbEmail,
       protocol
     } : {
-      version:'v4.08',
+      version:'v4.09',
       exported: new Date().toISOString(),
       type:'full',
       installations,protocol,certificates,equipment
@@ -4369,7 +4415,7 @@ function printInstReport(fak){
   if(equipList.length) win.document.write('<div style="margin-bottom:8px">'+equipList.map(function(e){return '<span style="background:#f0f0f0;padding:2px 8px;border-radius:3px;margin-right:4px;font-size:11px">✓ '+e+'</span>';}).join('')+'</div>');
   win.document.write('<strong>Δεξαμενές:</strong>'+tanksHtml);
   win.document.write('<h2>📄 Πιστοποιητικά</h2>'+certsHtml);
-  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.08</div>');
+  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.09</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.focus();
@@ -5044,6 +5090,81 @@ function importNomosIndex(input){
   };
   reader.readAsText(file,'utf-8');
   input.value='';
+}
+
+
+// ══ ΝΟΜΟΘΕΣΙΑ: Import/Export ══
+
+// Import κοινού index (admin → Firebase, όλοι βλέπουν)
+function importNomosShared(input){
+  if(_serverRole==='guest'){ toast('⛔ Δεν έχεις δικαίωμα','error'); return; }
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      const arr=Array.isArray(data)?data:(data.nomos||data.items||data.nomosIndex||[]);
+      if(!arr.length){ toast('Δεν βρέθηκαν εγγραφές νομοθεσίας','error'); return; }
+      nomosIndex=arr;
+      save('nomos',nomosIndex);
+      // Αποθήκευση στο Firebase αν είμαστε online
+      if(USE_FIREBASE && db){
+        fbSave('nomos', nomosIndex).then(function(){
+          toast('✅ Index νομοθεσίας ανέβηκε στο Firebase ('+arr.length+' εγγραφές)','success');
+        });
+      } else {
+        toast('✅ Index νομοθεσίας φορτώθηκε ('+arr.length+' εγγραφές)','success');
+      }
+      populateNomosFilters(); renderNomos();
+    }catch(err){ toast('❌ '+err.message,'error'); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+// Import προσωπικής λίστας (localStorage μόνο)
+function importNomosPersonal(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      const arr=Array.isArray(data)?data:(data.nomos||data.items||data.nomosIndex||[]);
+      if(!arr.length){ toast('Δεν βρέθηκαν εγγραφές','error'); return; }
+      // Αποθήκευση στο localStorage με ξεχωριστό key
+      const fbEmail=sessionStorage.getItem('fb_email')||'local';
+      const personalKey='nomos_personal_'+fbEmail.replace(/[@.]/g,'_');
+      localStorage.setItem(personalKey, JSON.stringify(arr));
+      // Συγχώνευση με το κοινό index
+      const combined=[...nomosIndex,...arr];
+      // Απόκρυψη διπλότυπων βάσει _id
+      const seen=new Set();
+      const unique=combined.filter(function(x){ 
+        const k=x._id||x.id||(x.title+x.fek); 
+        if(seen.has(k)) return false; 
+        seen.add(k); return true; 
+      });
+      nomosIndex=unique;
+      toast('✅ Προσωπική λίστα φορτώθηκε ('+arr.length+' εγγραφές, σύνολο: '+unique.length+')','success');
+      populateNomosFilters(); renderNomos();
+    }catch(err){ toast('❌ '+err.message,'error'); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+// Export προσωπικής λίστας
+function exportNomosPersonal(){
+  const fbEmail=sessionStorage.getItem('fb_email')||'local';
+  const personalKey='nomos_personal_'+fbEmail.replace(/[@.]/g,'_');
+  const personal=JSON.parse(localStorage.getItem(personalKey)||'[]');
+  if(!personal.length){ toast('Δεν υπάρχει προσωπική λίστα νομοθεσίας','error'); return; }
+  const blob=new Blob([JSON.stringify(personal,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='nomos_personal_'+fbEmail.split('@')[0]+'.json';
+  a.click();
+  toast('✅ Εξαγωγή προσωπικής λίστας ('+personal.length+' εγγραφές)');
 }
 
 function populateNomosFilters(){
