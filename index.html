@@ -407,11 +407,11 @@ const MiniDocGen = {
     <span class="topbar-ver">v4.10</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
-    <button class="btn btn-secondary btn-sm" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
+    <button class="btn btn-secondary btn-sm" id="btn-backup-all" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
     <button class="btn btn-secondary btn-sm" id="btn-backup-kina" onclick="backupShared()" title="Backup μόνο Εγκαταστάσεις/Πιστοποιητικά/Εξοπλισμός">💾 Backup Κοινά</button>
     <label class="btn btn-primary btn-sm" style="cursor:pointer;display:none" id="btn-fb-upload-label" title="Ανέβασε αρχείο backup στο Firebase">☁️ Upload → Firebase<input type="file" accept=".json" style="display:none" onchange="importSharedToFirebase(this)"></label>
     <button class="btn btn-primary btn-sm" onclick="fbImportFromBackup()" id="btn-fb-import" title="Ανέβασε τα τοπικά δεδομένα στο Firebase" style="display:none">☁️ Upload to Firebase</button>
-    <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" title="Φόρτωση δεδομένων από αρχείο backup">📂 Restore<input type="file" accept=".json" style="display:none" onchange="restoreData(this)"></label>
+    <label id="btn-restore" class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0" title="Φόρτωση δεδομένων από αρχείο backup">📂 Restore<input type="file" accept=".json" style="display:none" onchange="restoreData(this)"></label>
     <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0;background:#e8f5e9;border-color:#4caf50;color:#2e7d32" id="btn-eisag-proto" title="Εισαγωγή ΜΟΝΟ κινήσεων πρωτοκόλλου από JSON">📋 Εισαγ. Πρωτοκόλλου<input type="file" accept=".json" style="display:none" onchange="importProtoOnly(this)"></label>
     <button class="btn-logout" onclick="doLogout()">Έξοδος</button>
   </div>
@@ -467,8 +467,8 @@ const MiniDocGen = {
 
       <!-- Τελευταίες κινήσεις -->
       <!-- Τελευταίες κινήσεις -->
-      <div class="recent-section">
-        <div class="recent-header">Τελευταίες 10 Κινήσεις Πρωτοκόλλου</div>
+      <div id="dash-proto-section" class="recent-section">
+        <div id="dash-last-proto-title" class="recent-header">Τελευταίες 10 Κινήσεις Πρωτοκόλλου</div>
         <div id="recent-list"></div>
       </div>
     </div>
@@ -2135,8 +2135,9 @@ function afterLogin(username){
         'button[onclick*="openProtoModal"], button[onclick*="deleteProto"],' +
         '.btn-primary:not(.guest-ok), .btn-danger'
       ).forEach(function(b){ b.style.display='none'; });
-      // Κρύψε topbar κουμπιά με IDs
-      ['btn-fb-upload-label','btn-fb-import','btn-eisag-proto','btn-backup-kina'].forEach(function(id){
+      // Guest: κρύψε ΟΛΑ τα topbar κουμπιά εκτός Έξοδος
+      ['btn-backup-all','btn-backup-kina','btn-fb-upload-label','btn-fb-import',
+       'btn-eisag-proto','btn-restore'].forEach(function(id){
         var el=document.getElementById(id);
         if(el) el.style.display='none';
       });
@@ -2455,6 +2456,15 @@ function updateBadges(){
 
 // ══ DASHBOARD ══
 function renderDash(){
+  // Guest: κρύψε πρωτόκολλο στην αρχική
+  if(_serverRole==='guest'){
+    ['s-proto','s-done','s-phase2','s-pending'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.textContent='—';
+    });
+    var sec=document.getElementById('dash-proto-section');
+    if(sec) sec.style.display='none';
+    return; // Μην συνεχίσεις τη renderDash
+  }
   updateBadges();
   const today=new Date(); today.setHours(0,0,0,0);
   const done=protocol.filter(p=>p.teliko).length;
