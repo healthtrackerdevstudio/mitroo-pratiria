@@ -1871,7 +1871,12 @@ function loadData(){
       nomosIndex = JSON.parse(localStorage.getItem(KEYS.nomos)||'[]');
       _afterLoad();
       // Real-time listeners για κοινά
-      fbListen('installations', function(d){ installations=d; updateBadges(); renderInst(); renderDash(); renderInstStats(); });
+      fbListen('installations', function(d){
+        installations=d;
+        updateBadges(); renderInst(); renderDash();
+        // renderInstStats με μικρό delay για να είναι έτοιμα τα filters
+        setTimeout(function(){ populateInstStatsFilters(); renderInstStats(); }, 200);
+      });
       fbListen('certificates',  function(d){ certificates=d;  updateBadges(); renderCerts(); });
       fbListen('equipment',     function(d){ equipment=d;     renderEquip(); });
     });
@@ -2088,15 +2093,15 @@ function restoreData(input){
   input.value='';
 }
 function afterLogin(username){
-  // Αποφυγή διπλής UI initialization
-  const alreadyCalled = window._afterLoginCalled;
-  window._afterLoginCalled=true;
-  // Πάντα ενημέρωσε το role
+  // Ενημέρωσε πάντα το role από το sessionStorage
   const _fbEmailNow=sessionStorage.getItem('fb_email')||'';
   if(_fbEmailNow){
     _serverRole=_fbEmailNow.startsWith('admin')?'admin':_fbEmailNow.startsWith('guest')?'guest':'user';
   }
-  if(alreadyCalled){ return; }
+  // Αν το app είναι ήδη ορατό με τον ίδιο χρήστη, μην ξανατρέξεις
+  const appVisible=(document.getElementById('app').style.display==='flex');
+  const sameUser=(document.getElementById('topbar-user').textContent===username);
+  if(appVisible && sameUser){ return; }
   document.getElementById('topbar-user').textContent=username;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
@@ -2169,7 +2174,6 @@ function afterLogin(username){
 }
 
 function doLogout(){
-  window._afterLoginCalled=false;
   if(_serverRole!=='guest') autoBackupOnLogout();
   if(USE_FIREBASE && window.fbAuth) window.fbAuth.signOut().catch(function(){});
   sessionStorage.clear();
