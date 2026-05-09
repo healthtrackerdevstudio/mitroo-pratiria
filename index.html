@@ -10,7 +10,7 @@
   Η εφαρμογή αυτή αναπτύχθηκε για εσωτερική χρήση του τμήματος.
   Απαγορεύεται η αναδημοσίευση ή χρήση χωρίς άδεια του δημιουργού.
 
-  Έκδοση: v4.11
+  Έκδοση: v4.12
   Ημερομηνία: Μάρτιος 2026
   Επικοινωνία: ilias.papadakis@office365.attica.gov.gr
 =======================================================================
@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Μητρώο Εγκαταστάσεων v4.11</title>
+<title>Μητρώο Εγκαταστάσεων v4.12</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -395,7 +395,7 @@ const MiniDocGen = {
     </div>
     <div id="login-error" class="login-error" style="display:none"></div>
     <button class="btn btn-primary btn-full login-btn" onclick="doLogin()">Είσοδος</button>
-    <p class="login-footer">© 2026 Η.Π. — v4.11</p>
+    <p class="login-footer">© 2026 Η.Π. — v4.12</p>
   </div>
 </div>
 
@@ -404,7 +404,7 @@ const MiniDocGen = {
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand"><div class="dot"></div>Μητρώο Εγκαταστάσεων</div>
-    <span class="topbar-ver">v4.11</span>
+    <span class="topbar-ver">v4.12</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
     <button class="btn btn-secondary btn-sm" id="btn-backup-all" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
@@ -1096,10 +1096,10 @@ const MiniDocGen = {
         </div>
         <div class="form-group">
           <label>Τμήμα / Φύλλο</label>
-          <select class="form-control" id="if-sheet">
+          <select class="form-control" id="if-sheet" onchange="onInstTypeChange()">
             <option value="">—</option>
-            <option>Ανατ. Αττική</option>
-            <option>ΕΧΕΣ</option>
+            <option value="inst">Εγκαταστάσεις</option>
+            <option value="auto">Αυτοκίνητα</option>
           </select>
         </div>
         <div class="form-group ff">
@@ -1234,7 +1234,7 @@ const MiniDocGen = {
             <option>Πλυντήριο</option>
             <option>Λιπαντήριο</option>
             <option>ΙΚΤΕΟ</option>
-            <option>ΕΧΕΣ</option>
+            <option id="if-type-exes">ΕΧΕΣ</option>
           </select>
         </div>
         <div class="form-group" id="subtype-mikto-row" style="display:none">
@@ -1557,8 +1557,10 @@ const MiniDocGen = {
               <div class="checkbox-row"><input type="checkbox" id="ef-lipantirio" onchange="toggleAnifotiko('lipantirio')"><label for="ef-lipantirio">Λιπαντήριο</label></div>
               <div id="row-anif-lipantirio" style="display:none;margin-left:22px;margin-top:2px" class="checkbox-row"><input type="checkbox" id="ef-anif-lipantirio"><label for="ef-anif-lipantirio">Ανυψωτικό</label></div>
             </div>
-            <div class="checkbox-row"><input type="checkbox" id="ef-a25"><label for="ef-a25">Άρθρο 25 (Stage II)</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="ef-a25"><label for="ef-a25">Άρθρο 25</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="ef-stage2"><label for="ef-stage2">Stage II</label></div>
             <div class="checkbox-row"><input type="checkbox" id="ef-a27"><label for="ef-a27">Άρθρο 27</label></div>
+            <div class="checkbox-row"><input type="checkbox" id="ef-pezodromiko"><label for="ef-pezodromiko">Πεζοδρομιακό</label></div>
             <div class="checkbox-row"><input type="checkbox" id="ef-steg-freatia"><label for="ef-steg-freatia">Στεγανά Φρεάτια</label></div>
             <div class="checkbox-row"><input type="checkbox" id="ef-offset-filling"><label for="ef-offset-filling">Offset Filling</label></div>
             <div class="checkbox-row"><input type="checkbox" id="ef-auto-politis"><label for="ef-auto-politis">Αυτόματος Πωλητής</label></div>
@@ -1846,12 +1848,7 @@ function save(key,data){
   if(USE_FIREBASE && db && FB_COLLECTIONS[key]){
     fbSave(FB_COLLECTIONS[key], data);
   }
-  // Firebase: protocol ανά χρήστη
-  if(USE_FIREBASE && db && key==='proto'){
-    const fbEmail=sessionStorage.getItem('fb_email')||'local';
-    const protoKey='protocol_'+fbEmail.toLowerCase().replace(/[@.]/g,'_');
-    fbSave(protoKey, data);
-  }
+  // Protocol: localStorage only (no Firebase)
   // LAN server fallback
   if(SERVER_MODE && !USE_FIREBASE) saveToServer(key,data);
 }
@@ -1866,7 +1863,7 @@ function loadData(){
       installations = results[0] || [];
       certificates  = results[1] || [];
       equipment     = results[2] || [];
-      // Πρωτόκολλο: localStorage (φορτώνεται async μετά)
+          // Πρωτόκολλο: πάντα localStorage
       protocol = JSON.parse(localStorage.getItem(KEYS.proto)||'null')||[];
       nomosIndex = JSON.parse(localStorage.getItem(KEYS.nomos)||'[]');
       _afterLoad();
@@ -1989,7 +1986,7 @@ function backupShared(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0');
   const payload={
-    version:'v4.11',
+    version:'v4.12',
     exported_at:now.toISOString(),
     type:'shared',
     inst:installations,
@@ -2038,7 +2035,7 @@ function backupData(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+''+String(now.getMinutes()).padStart(2,'0');
   const payload={
-    version:'v4.11',
+    version:'v4.12',
     exported_at:now.toISOString(),
     inst:installations,
     proto:protocol,
@@ -2107,33 +2104,7 @@ function afterLogin(username){
   document.getElementById('app').style.display='flex';
   // Αρχικοποίηση Firebase ΠΡΩΤΑ
   if(USE_FIREBASE){ initFirebase(); setTimeout(updateFbButton, 1000); }
-  // Φόρτωση protocol ανά χρήστη από Firebase
-  if(USE_FIREBASE){
-    function loadUserProtocol(attempt){
-      attempt = attempt||1;
-      if(!db){
-        if(attempt<5) setTimeout(function(){ loadUserProtocol(attempt+1); }, 500);
-        return;
-      }
-      const fbEmail=sessionStorage.getItem('fb_email')||'';
-      if(!fbEmail) return;
-      const protoKey='protocol_'+fbEmail.toLowerCase().replace(/[@.]/g,'_');
-      fbLoad(protoKey).then(function(data){
-        if(data && data.length>0){
-          protocol=data;
-          save('proto',protocol);
-          renderProto(); updateBadges(); renderDash();
-          toast('✅ Πρωτόκολλο: '+data.length+' εγγραφές');
-        } else {
-          toast('ℹ️ Δεν βρέθηκε πρωτόκολλο για αυτόν τον χρήστη');
-        }
-      }).catch(function(e){
-        console.error('Protocol load error:', e);
-        toast('⚠️ Σφάλμα φόρτωσης πρωτοκόλλου: '+e.message,'error');
-      });
-    }
-    setTimeout(loadUserProtocol, 1000);
-  }
+  // Protocol loaded from localStorage in loadData()
   // Guest: απόκρυψη κουμπιών + μπλοκάρισμα
   if(_serverRole==='guest'){
     // Κρύψε όλα τα κουμπιά επεξεργασίας μετά από λίγο (να έχει φορτωθεί το DOM)
@@ -2194,13 +2165,13 @@ function autoBackupOnLogout(){
     // Firebase mode: backup μόνο πρωτόκολλο (τα κοινά είναι στο Firebase)
     // Local mode: backup όλα
     const data = USE_FIREBASE ? {
-      version:'v4.11',
+      version:'v4.12',
       exported: new Date().toISOString(),
       type:'protocol_only',
       user: fbEmail,
       protocol
     } : {
-      version:'v4.11',
+      version:'v4.12',
       exported: new Date().toISOString(),
       type:'full',
       installations,protocol,certificates,equipment
@@ -2901,6 +2872,13 @@ function syncSubtype(){
 
 function onInstTypeChange(){
   const t=document.getElementById('if-type').value;
+  const sheet=(document.getElementById('if-sheet')||{value:''}).value;
+  // Κρύψε ΕΧΕΣ αν sheet=auto
+  const exesOpt=document.getElementById('if-type-exes');
+  if(exesOpt){ exesOpt.style.display=sheet==='auto'?'none':''; }
+  if(sheet==='auto' && t==='ΕΧΕΣ'){
+    document.getElementById('if-type').value='';
+  }
   // Βυτιοφόρο: μόνο για πρατήρια υγρών
   const vytioRow=document.getElementById('vytio-row');
   if(vytioRow) vytioRow.style.display=TYPES_WITH_VYTIO.includes(t)?'block':'none';
@@ -3405,7 +3383,7 @@ function renderCerts(){
     else if(g.expiring>0)
       statusBadge='<span class="badge badge-orange">⏰ Λήγει σύντομα ('+g.expiring+')</span>';
     else
-      statusBadge='<span class="badge badge-green">✅ Ενεργά</span>';
+      statusBadge='<span class="badge badge-green">✅ Σε ισχύ ('+g.active+')</span>';
     return '<tr style="cursor:pointer" data-openfak="'+esc(g.fak)+'">'
       +'<td class="mono"><strong>'+esc(g.fak)+'</strong></td>'
       +'<td style="font-size:12px">'+esc(name)+'</td>'
@@ -3858,7 +3836,9 @@ function openEquipModal(fak=null){
   f('ef-anif-lipantirio').checked=!!eq.anif_lipantirio;
   toggleAnifotiko('plyntirio');toggleAnifotiko('lipantirio');
   f('ef-a25').checked=!!eq.artho25;
+  if(f('ef-stage2')) f('ef-stage2').checked=!!eq.stage2;
   f('ef-a27').checked=!!eq.artho27;
+  if(f('ef-pezodromiko')) f('ef-pezodromiko').checked=!!eq.pezodromiko;
   f('ef-plyntirio-pros').checked=!!eq.plyntirio_pros;
   f('ef-steg-freatia').checked=!!eq.steg_freatia;
   f('ef-offset-filling').checked=!!eq.offset_filling;
@@ -4012,7 +3992,7 @@ function saveEquip(){
     plyntirio_pros:f('ef-plyntirio-pros').checked,
     plyntirio_auto:f('ef-plyntirio-auto').checked,
     lipantirio:f('ef-lipantirio').checked,anif_lipantirio:f('ef-anif-lipantirio').checked,
-    artho25:f('ef-a25').checked,artho27:f('ef-a27').checked,
+    artho25:f('ef-a25').checked,stage2:f('ef-stage2')?f('ef-stage2').checked:false,artho27:f('ef-a27').checked,pezodromiko:f('ef-pezodromiko')?f('ef-pezodromiko').checked:false,
     steg_freatia:f('ef-steg-freatia').checked,
     offset_filling:f('ef-offset-filling').checked,
     auto_politis:f('ef-auto-politis').checked,
@@ -4227,6 +4207,7 @@ function toast(msg,type='success'){
 
 // ══ ΣΤΑΤΙΣΤΙΚΑ ΕΓΚΑΤΑΣΤΑΣΕΩΝ ══
 function renderInstStats(){
+  if(installations.length===0 && USE_FIREBASE){ setTimeout(renderInstStats,600); return; }
   const today=new Date(); today.setHours(0,0,0,0);
   const twoYearsAgo=new Date(today); twoYearsAgo.setFullYear(twoYearsAgo.getFullYear()-2);
   const typeEl_is_f_type=document.getElementById('is-f-type');
@@ -4402,8 +4383,10 @@ function printInstReport(fak){
   const equipList=[];
   if(eq.plyntirio) equipList.push('Πλυντήριο'+(eq.plyntirio_pros?' (Προσαρμοσμένο)':'')+(eq.plyntirio_auto?' (Αυτόματο)':'')+(eq.anif_plyntirio?' + Ανυψωτικό':''));
   if(eq.lipantirio) equipList.push('Λιπαντήριο'+(eq.anif_lipantirio?' + Ανυψωτικό':''));
-  if(eq.artho25) equipList.push('Άρθρο 25 — Stage II');
+  if(eq.artho25) equipList.push('⚡ ΑΡΘΡΟ 25');
+  if(eq.stage2) equipList.push('Stage II');
   if(eq.artho27) equipList.push('Άρθρο 27');
+  if(eq.pezodromiko) equipList.push('🚶 ΠΕΖΟΔΡΟΜΙΑΚΟ');
   if(eq.steg_freatia) equipList.push('Στεγανά Φρεάτια');
   if(eq.offset_filling) equipList.push('Offset Filling');
   if(eq.auto_politis) equipList.push('Αυτόματος Πωλητής');
@@ -4449,10 +4432,16 @@ function printInstReport(fak){
     :'<em style="color:#666">Δεν έχουν καταχωρηθεί αντλίες</em>';
   win.document.write('<div style="margin-bottom:8px"><strong>Αντλίες/Διανομείς:</strong><br>'+pumpsHtml2+'</div>');
   if(eq.fortistes) win.document.write('<div style="margin-bottom:6px"><strong>Φορτιστές ΗΕΟ:</strong> '+eq.fortistes+'</div>');
-  if(equipList.length) win.document.write('<div style="margin-bottom:8px">'+equipList.map(function(e){return '<span style="background:#f0f0f0;padding:2px 8px;border-radius:3px;margin-right:4px;font-size:11px">✓ '+e+'</span>';}).join('')+'</div>');
+  if(equipList.length) win.document.write('<div style="margin-bottom:8px">'+equipList.map(function(e){
+    var isSpecial=(e.indexOf('ΑΡΘΡΟ 25')>=0||e.indexOf('ΠΕΖΟΔΡΟΜΙΑΚΟ')>=0);
+    var bg=isSpecial?'#fff3cd':'#f0f0f0';
+    var fw=isSpecial?'bold':'normal';
+    var border=isSpecial?'2px solid #e67e00':'none';
+    return '<span style="background:'+bg+';padding:2px 8px;border-radius:3px;margin-right:4px;font-size:11px;font-weight:'+fw+';border:'+border+'">✓ '+e+'</span>';
+  }).join('')+'</div>');
   win.document.write('<strong>Δεξαμενές:</strong>'+tanksHtml);
   win.document.write('<h2>📄 Πιστοποιητικά</h2>'+certsHtml);
-  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.11</div>');
+  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.12</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.focus();
