@@ -2837,6 +2837,12 @@ function openInstModal(fak=null){
     Array.from(eidEl.options).forEach(o => o.selected = saved.includes(o.value));
   }
   onInstTypeChange();
+  // Γέμισμα datalist τοποθεσίας από υπάρχουσες τιμές
+  var dl=document.getElementById('topo-datalist');
+  if(dl){
+    var topos=[...new Set(installations.map(function(i){return (i.topothesia||'').trim();}).filter(Boolean))].sort();
+    dl.innerHTML=topos.map(function(t){return '<option value="'+t+'">';}).join('');
+  }
   openModal('modal-inst');
   qnavShow('inst',fak);
 }
@@ -2906,9 +2912,24 @@ function onInstTypeChange(){
 function toggleSubtype(){ onInstTypeChange(); }
 function toggleSubtypeExtras(){}
 
+function normalizeFak(f){
+  return f.trim().toUpperCase().replace(/[./]/g,'_').replace(/\s+/g,' ').replace(/_+/g,'_');
+}
+
 function saveInst(){
   const fak=document.getElementById('if-fak').value.trim();
   if(!fak){toast('Το ΦΑΚ είναι υποχρεωτικό','error');return;}
+  // Duplicate check — μόνο για νέες εγγραφές
+  if(!editInstId){
+    const fakNorm=normalizeFak(fak);
+    const similar=installations.filter(function(i){
+      return normalizeFak(i.fak||'')===fakNorm;
+    });
+    if(similar.length>0){
+      var names=similar.map(function(i){return i.fak+' ('+i.name+')';}).join(', ');
+      if(!confirm('⚠️ Υπάρχει ήδη εγκατάσταση με παρόμοιο αριθμό φακέλου:\n'+names+'\n\nΣυνέχεια;')) return;
+    }
+  }
   const type=document.getElementById('if-type').value;
   let subtype='';
   if(type==='Μικτό Πρατήριο'){
@@ -2970,10 +2991,22 @@ function saveInst(){
 }
 function deleteInst(fak){
   if(_serverRole==='guest'){toast('⛔ Δεν έχεις δικαίωμα','error');return;}
-  installations=installations.filter(i=>i.fak!==fak);
+  // Μέτρα συσχετισμένων εγγραφών
+  var relCerts=certificates.filter(function(c){return c.fak===fak;}).length;
+  var relEquip=equipment.filter(function(e){return e.fak===fak;}).length;
+  var msg='Διαγραφή εγκατάστασης '+fak+';';
+  if(relCerts>0||relEquip>0){
+    msg+='\n\nΘα διαγραφούν επίσης:';
+    if(relCerts>0) msg+='\n• '+relCerts+' πιστοποιητικά';
+    if(relEquip>0) msg+='\n• '+relEquip+' εγγραφές εξοπλισμού';
+  }
+  if(!confirm(msg)) return;
+  installations=installations.filter(function(i){return i.fak!==fak;});
+  if(relCerts>0){ certificates=certificates.filter(function(c){return c.fak!==fak;}); save('certs',certificates); }
+  if(relEquip>0){ equipment=equipment.filter(function(e){return e.fak!==fak;}); save('equip',equipment); }
   save('inst',installations);
-  updateBadges();renderInst();renderDash();
-  toast('Εγκατάσταση διαγράφηκε');
+  updateBadges();renderInst();renderDash();renderCerts();renderEquip();
+  toast('Εγκατάσταση + '+relCerts+' πιστ. + '+relEquip+' εξοπλ. διαγράφηκαν');
 }
 
 // ══ PROTOCOL ══
@@ -4254,8 +4287,6 @@ function renderInstStats(){
       });
     });
   }
-      const eq=equipment.find(function(e){return e.fak===i.fak;})||{};
-      if(fEquip==='plyntirio') return eq.plyntirio;
   if(fAuto==='has') arr=arr.filter(function(i){return i.autopsia;});
   else if(fAuto==='none') arr=arr.filter(function(i){return !i.autopsia;});
   else if(fAuto==='old') arr=arr.filter(function(i){return i.autopsia&&new Date(i.autopsia)<twoYearsAgo;});
