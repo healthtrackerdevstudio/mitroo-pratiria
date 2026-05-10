@@ -10,7 +10,7 @@
   Η εφαρμογή αυτή αναπτύχθηκε για εσωτερική χρήση του τμήματος.
   Απαγορεύεται η αναδημοσίευση ή χρήση χωρίς άδεια του δημιουργού.
 
-  Έκδοση: v4.12
+  Έκδοση: v4.13
   Ημερομηνία: Μάρτιος 2026
   Επικοινωνία: ilias.papadakis@office365.attica.gov.gr
 =======================================================================
@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Μητρώο Εγκαταστάσεων v4.12</title>
+<title>Μητρώο Εγκαταστάσεων v4.13</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -395,7 +395,7 @@ const MiniDocGen = {
     </div>
     <div id="login-error" class="login-error" style="display:none"></div>
     <button class="btn btn-primary btn-full login-btn" onclick="doLogin()">Είσοδος</button>
-    <p class="login-footer">© 2026 Η.Π. — v4.12</p>
+    <p class="login-footer">© 2026 Η.Π. — v4.13</p>
   </div>
 </div>
 
@@ -404,7 +404,7 @@ const MiniDocGen = {
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand"><div class="dot"></div>Μητρώο Εγκαταστάσεων</div>
-    <span class="topbar-ver">v4.12</span>
+    <span class="topbar-ver">v4.13</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
     <button class="btn btn-secondary btn-sm" id="btn-backup-all" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
@@ -1986,7 +1986,7 @@ function backupShared(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0');
   const payload={
-    version:'v4.12',
+    version:'v4.13',
     exported_at:now.toISOString(),
     type:'shared',
     inst:installations,
@@ -2035,7 +2035,7 @@ function backupData(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+''+String(now.getMinutes()).padStart(2,'0');
   const payload={
-    version:'v4.12',
+    version:'v4.13',
     exported_at:now.toISOString(),
     inst:installations,
     proto:protocol,
@@ -2165,13 +2165,13 @@ function autoBackupOnLogout(){
     // Firebase mode: backup μόνο πρωτόκολλο (τα κοινά είναι στο Firebase)
     // Local mode: backup όλα
     const data = USE_FIREBASE ? {
-      version:'v4.12',
+      version:'v4.13',
       exported: new Date().toISOString(),
       type:'protocol_only',
       user: fbEmail,
       protocol
     } : {
-      version:'v4.12',
+      version:'v4.13',
       exported: new Date().toISOString(),
       type:'full',
       installations,protocol,certificates,equipment
@@ -2400,11 +2400,11 @@ function showView(v){
   else if(v==='equip')renderEquip();
   else if(v==='stats')renderStats();
   else if(v==='inst-stats'){
-    // Πάντα με timeout για να είναι σίγουρο ότι έχουν φορτωθεί τα δεδομένα
-    populateInstStatsFilters(); renderInstStats();
-    if(USE_FIREBASE){
-      setTimeout(function(){ populateInstStatsFilters(); renderInstStats(); }, 800);
-    }
+    // Καλούμε πάντα με μικρό delay για να είναι έτοιμο το DOM
+    setTimeout(function(){
+      populateInstStatsFilters();
+      renderInstStats();
+    }, 100);
   }
   else if(v==='docgen'){dgInit();dgRenderKoinMgr&&dgRenderKoinMgr();}
   else if(v==='docgen-koin-mgr'){dgRenderKoinMgr();dgPopulateMgrCat();}
@@ -4261,10 +4261,13 @@ function renderInstStats(){
   else if(fAuto==='old') arr=arr.filter(function(i){return i.autopsia&&new Date(i.autopsia)<twoYearsAgo;});
   if(selYpef.length) arr=arr.filter(function(i){return selYpef.includes(i.ypeuthinos||'');});
 
-  // Stat cards
-  document.getElementById('is-r-total').textContent=arr.length;
-  document.getElementById('is-r-active').textContent=arr.filter(function(i){return !i.sfrагisi&&!i.anaklisi;}).length;
-  document.getElementById('is-r-inactive').textContent=arr.filter(function(i){return i.sfrагisi||i.anaklisi;}).length;
+  // Stat cards — με null check
+  var _elTotal=document.getElementById('is-r-total');
+  var _elActive=document.getElementById('is-r-active');
+  var _elInactive=document.getElementById('is-r-inactive');
+  if(_elTotal) _elTotal.textContent=arr.length;
+  if(_elActive) _elActive.textContent=arr.filter(function(i){return !i.sfrагisi&&!i.anaklisi;}).length;
+  if(_elInactive) _elInactive.textContent=arr.filter(function(i){return i.sfrагisi||i.anaklisi;}).length;
   document.getElementById('is-r-autopsia').textContent=arr.filter(function(i){return i.autopsia;}).length;
 
   // Πίνακας
@@ -4441,7 +4444,7 @@ function printInstReport(fak){
   }).join('')+'</div>');
   win.document.write('<strong>Δεξαμενές:</strong>'+tanksHtml);
   win.document.write('<h2>📄 Πιστοποιητικά</h2>'+certsHtml);
-  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.12</div>');
+  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.13</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.focus();
