@@ -10,7 +10,7 @@
   Η εφαρμογή αυτή αναπτύχθηκε για εσωτερική χρήση του τμήματος.
   Απαγορεύεται η αναδημοσίευση ή χρήση χωρίς άδεια του δημιουργού.
 
-  Έκδοση: v4.13
+  Έκδοση: v4.14
   Ημερομηνία: Μάρτιος 2026
   Επικοινωνία: ilias.papadakis@office365.attica.gov.gr
 =======================================================================
@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Μητρώο Εγκαταστάσεων v4.13</title>
+<title>Μητρώο Εγκαταστάσεων v4.14</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -395,7 +395,7 @@ const MiniDocGen = {
     </div>
     <div id="login-error" class="login-error" style="display:none"></div>
     <button class="btn btn-primary btn-full login-btn" onclick="doLogin()">Είσοδος</button>
-    <p class="login-footer">© 2026 Η.Π. — v4.13</p>
+    <p class="login-footer">© 2026 Η.Π. — v4.14</p>
   </div>
 </div>
 
@@ -404,7 +404,7 @@ const MiniDocGen = {
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand"><div class="dot"></div>Μητρώο Εγκαταστάσεων</div>
-    <span class="topbar-ver">v4.13</span>
+    <span class="topbar-ver">v4.14</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
     <button class="btn btn-secondary btn-sm" id="btn-backup-all" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
@@ -576,7 +576,6 @@ const MiniDocGen = {
           <option>Πλυντήριο</option>
           <option>Λιπαντήριο</option>
           <option>ΙΚΤΕΟ</option>
-          <option>ΕΧΕΣ</option>
         </select>
         <select class="filter-select" id="inst-f-cat" onchange="renderInst()">
           <option value="">Όλες Κατηγορίες</option>
@@ -667,7 +666,6 @@ const MiniDocGen = {
           <option>Πλυντήριο</option>
           <option>Λιπαντήριο</option>
           <option>ΙΚΤΕΟ</option>
-          <option>ΕΧΕΣ</option>
         </select>
         <select class="filter-select" id="cert-f-status" onchange="renderCerts()">
           <option value="">Όλες Καταστάσεις</option>
@@ -744,7 +742,6 @@ const MiniDocGen = {
           <option>Πλυντήριο</option>
           <option>Λιπαντήριο</option>
           <option>ΙΚΤΕΟ</option>
-          <option>ΕΧΕΣ</option>
         </select>
             </div>
             <div>
@@ -976,7 +973,6 @@ const MiniDocGen = {
           <option>Πλυντήριο</option>
           <option>Λιπαντήριο</option>
           <option>ΙΚΤΕΟ</option>
-          <option>ΕΧΕΣ</option>
         </select>
         <select class="filter-select" id="map-f-cat" onchange="renderMap()">
           <option value="">Όλες κατηγορίες</option>
@@ -1699,6 +1695,58 @@ async function fbLoad(collection){
   } catch(e) { console.error('fbLoad error:', collection, e); return null; }
 }
 
+// ══ CHUNKED PROTOCOL (1000 κινήσεις/chunk) ══
+const PROTO_CHUNK_SIZE = 1000;
+
+async function fbSaveProto(collection, data){
+  if(!db) return;
+  try {
+    const chunks = [];
+    for(var ci=0; ci<data.length; ci+=PROTO_CHUNK_SIZE){
+      chunks.push(data.slice(ci, ci+PROTO_CHUNK_SIZE));
+    }
+    const batch = db.batch();
+    chunks.forEach(function(chunk, idx){
+      batch.set(db.collection(collection).doc('chunk_'+idx),
+        {items:chunk, updated:new Date().toISOString()});
+    });
+    batch.set(db.collection(collection).doc('_meta'),
+      {chunks:chunks.length, total:data.length, updated:new Date().toISOString()});
+    await batch.commit();
+    // Αποθήκευση και στο localStorage ως backup
+    try{localStorage.setItem('proto_fb_backup_'+collection, JSON.stringify(data));}catch(e){}
+  } catch(e) { console.error('fbSaveProto error:', e); }
+}
+
+async function fbLoadProto(collection){
+  if(!db) return null;
+  try {
+    const meta = await db.collection(collection).doc('_meta').get();
+    if(!meta.exists){
+      // Fallback: παλιό format single doc
+      const old = await db.collection(collection).doc('data').get();
+      if(old.exists){ const it=old.data().items||[]; return Array.isArray(it)?it:[]; }
+      return [];
+    }
+    const numChunks = meta.data().chunks||0;
+    if(numChunks===0) return [];
+    const promises = [];
+    for(var i=0; i<numChunks; i++) promises.push(db.collection(collection).doc('chunk_'+i).get());
+    const docs = await Promise.all(promises);
+    var all = [];
+    docs.forEach(function(d){ if(d.exists) all=all.concat(d.data().items||[]); });
+    return all;
+  } catch(e) {
+    // Fallback: localStorage backup
+    console.error('fbLoadProto error:', e);
+    try{
+      const bk=localStorage.getItem('proto_fb_backup_'+collection);
+      if(bk) return JSON.parse(bk);
+    }catch(e2){}
+    return null;
+  }
+}
+
 // Real-time listener για κοινά δεδομένα
 function fbListen(collection, callback){
   if(!db) return;
@@ -1848,7 +1896,20 @@ function save(key,data){
   if(USE_FIREBASE && db && FB_COLLECTIONS[key]){
     fbSave(FB_COLLECTIONS[key], data);
   }
-  // Protocol: localStorage only (no Firebase)
+  // Protocol: localStorage + Firebase chunked
+  if(USE_FIREBASE && key==='proto'){
+    if(db){
+      const fbEmail=sessionStorage.getItem('fb_email')||'';
+      if(fbEmail){
+        const protoKey='protocol_'+fbEmail.toLowerCase().replace(/[@.]/g,'_');
+        fbSaveProto(protoKey, data).catch(function(){
+          // Αποτυχία Firebase — δεδομένα ασφαλή στο localStorage
+          console.warn('Firebase unavailable — protocol saved locally only');
+        });
+      }
+    }
+    // Πάντα στο localStorage ανεξάρτητα από Firebase
+  }
   // LAN server fallback
   if(SERVER_MODE && !USE_FIREBASE) saveToServer(key,data);
 }
@@ -1986,7 +2047,7 @@ function backupShared(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0');
   const payload={
-    version:'v4.13',
+    version:'v4.14',
     exported_at:now.toISOString(),
     type:'shared',
     inst:installations,
@@ -2035,7 +2096,7 @@ function backupData(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+''+String(now.getMinutes()).padStart(2,'0');
   const payload={
-    version:'v4.13',
+    version:'v4.14',
     exported_at:now.toISOString(),
     inst:installations,
     proto:protocol,
@@ -2104,7 +2165,56 @@ function afterLogin(username){
   document.getElementById('app').style.display='flex';
   // Αρχικοποίηση Firebase ΠΡΩΤΑ
   if(USE_FIREBASE){ initFirebase(); setTimeout(updateFbButton, 1000); }
-  // Protocol loaded from localStorage in loadData()
+  // Φόρτωση protocol από Firebase (chunked) με merge vs localStorage
+  if(USE_FIREBASE){
+    setTimeout(function(){
+      if(!db) return;
+      const fbEmail=sessionStorage.getItem('fb_email')||'';
+      if(!fbEmail) return;
+      const protoKey='protocol_'+fbEmail.toLowerCase().replace(/[@.]/g,'_');
+      const localProto=JSON.parse(localStorage.getItem(KEYS.proto)||'null')||[];
+      fbLoadProto(protoKey).then(function(fbData){
+        var final;
+        if(!fbData || fbData.length===0){
+          // Firebase άδειο → χρησιμοποίησε localStorage
+          final = localProto;
+          if(final.length>0){
+            fbSaveProto(protoKey, final); // ανέβασε στο Firebase
+            toast('✅ Πρωτόκολλο (τοπικό): '+final.length+' εγγραφές');
+          } else {
+            toast('ℹ️ Δεν βρέθηκε πρωτόκολλο');
+          }
+        } else if(localProto.length > fbData.length){
+          // localStorage έχει περισσότερες κινήσεις (offline δουλειά)
+          // Merge: κράτα όλες τις κινήσεις, χωρίς duplicates
+          var fbIds=new Set(fbData.map(function(p){return p._id;}));
+          var extra=localProto.filter(function(p){return !fbIds.has(p._id);});
+          final = fbData.concat(extra);
+          // Ταξινόμησε χρονολογικά
+          final.sort(function(a,b){return (a.hm_xreosis||'') > (b.hm_xreosis||'') ? 1 : -1;});
+          fbSaveProto(protoKey, final); // sync στο Firebase
+          toast('✅ Πρωτόκολλο: '+final.length+' εγγραφές ('+extra.length+' offline συγχρον.)');
+        } else {
+          // Firebase είναι ενημερωμένο
+          final = fbData;
+          toast('✅ Πρωτόκολλο: '+final.length+' εγγραφές');
+        }
+        protocol = final;
+        localStorage.setItem(KEYS.proto, JSON.stringify(final));
+        renderProto(); updateBadges(); renderDash();
+      }).catch(function(e){
+        // Δεν υπάρχει internet — χρησιμοποίησε localStorage
+        console.error('proto load error:', e);
+        if(localProto.length>0){
+          protocol=localProto;
+          renderProto(); updateBadges(); renderDash();
+          toast('⚠️ Offline — Πρωτόκολλο από τοπική μνήμη: '+localProto.length+' εγγραφές');
+        } else {
+          toast('⚠️ Offline — Δεν βρέθηκε τοπικό πρωτόκολλο');
+        }
+      });
+    }, 1000);
+  }
   // Guest: απόκρυψη κουμπιών + μπλοκάρισμα
   if(_serverRole==='guest'){
     // Κρύψε όλα τα κουμπιά επεξεργασίας μετά από λίγο (να έχει φορτωθεί το DOM)
@@ -2145,7 +2255,17 @@ function afterLogin(username){
 }
 
 function doLogout(){
-  if(_serverRole!=='guest') autoBackupOnLogout();
+  if(_serverRole!=='guest'){
+    // Save protocol to Firebase πριν logout
+    if(USE_FIREBASE && db && protocol.length>0){
+      const fbEmail=sessionStorage.getItem('fb_email')||'';
+      if(fbEmail){
+        const protoKey='protocol_'+fbEmail.toLowerCase().replace(/[@.]/g,'_');
+        fbSaveProto(protoKey, protocol);
+      }
+    }
+    autoBackupOnLogout();
+  }
   if(USE_FIREBASE && window.fbAuth) window.fbAuth.signOut().catch(function(){});
   sessionStorage.clear();
   var _ls=document.getElementById('login-screen');
@@ -2165,13 +2285,13 @@ function autoBackupOnLogout(){
     // Firebase mode: backup μόνο πρωτόκολλο (τα κοινά είναι στο Firebase)
     // Local mode: backup όλα
     const data = USE_FIREBASE ? {
-      version:'v4.13',
+      version:'v4.14',
       exported: new Date().toISOString(),
       type:'protocol_only',
       user: fbEmail,
       protocol
     } : {
-      version:'v4.13',
+      version:'v4.14',
       exported: new Date().toISOString(),
       type:'full',
       installations,protocol,certificates,equipment
@@ -4475,7 +4595,7 @@ function printInstReport(fak){
   }).join('')+'</div>');
   win.document.write('<strong>Δεξαμενές:</strong>'+tanksHtml);
   win.document.write('<h2>📄 Πιστοποιητικά</h2>'+certsHtml);
-  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.13</div>');
+  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.14</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.focus();
