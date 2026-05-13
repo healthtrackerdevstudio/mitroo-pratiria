@@ -3301,22 +3301,33 @@ function renderProto(){
   const rejected=protocol.filter(p=>p.rejected).length;
   const summary=document.getElementById('proto-phase-summary');
   if(summary){
-    var phBtns=[
-      ["phase-btn-1","#f1f5f9","#cbd5e1","","1","&#9711; Προς Ενέργεια",phase1],
-      ["phase-btn-2","#eff6ff","#93c5fd","","2","&#128309; Προς Υπογραφές",phase2],
-      ["phase-btn-4","#fee2e2","#fca5a5","color:#dc2626","4","&#10060; Απορριφθέντα",rejected],
-      ["phase-btn-3","#f0fdf4","#86efac","","3","&#9989; Ολοκληρωμένα",phase3]
-    ].map(function(b){
-      return '<span id="'+b[0]+'" style="background:'+b[1]+';border:1px solid '+b[2]+';border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;user-select:none;'+b[3]+'" onclick="setProtoPhaseFilter('+JSON.stringify(b[4])+')">'+b[5]+': <strong>'+b[6]+'</strong></span>';
-    });
-    if(window._protoPhaseFilter) phBtns.push('<span style="background:#fef3c7;border:1px solid #fde68a;border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;font-size:11px" onclick="setProtoPhaseFilter('+JSON.stringify('')+')">&#10005; Καθαρισμός</span>');
-    summary.innerHTML=phBtns.join(' ');
-  // Highlight active phase button
-  ['1','2','3','4'].forEach(function(ph){
-    var btn=document.getElementById('phase-btn-'+ph);
-    if(btn){ btn.style.outline=window._protoPhaseFilter===ph?'3px solid #1a4a8a':'none';
-             btn.style.fontWeight=window._protoPhaseFilter===ph?'700':'400'; }
-  });
+    // Αριθμοί βάσει ετών (αν έχουν επιλεγεί)
+    var selYrs=getSelectedYears();
+    var baseArr=(selYrs.length>0)?protocol.filter(function(p){return selYrs.includes((p.hm_xreosis||'').substring(0,4));}):protocol;
+    var c1=baseArr.filter(function(p){return !p.rejected&&!p.teliko&&!p.hm_exerx;}).length;
+    var c2=baseArr.filter(function(p){return !p.rejected&&!p.teliko&&p.hm_exerx;}).length;
+    var c3=baseArr.filter(function(p){return !p.rejected&&p.teliko;}).length;
+    var c4=baseArr.filter(function(p){return p.rejected;}).length;
+    var fP=window._protoPhaseFilter||'';
+    function phSpan(id,bg,bc,col,ph,label,cnt){
+      var active=fP===ph;
+      var outline=active?'outline:3px solid #1a4a8a;font-weight:700;':'';
+      return '<span id="'+id+'" data-phase="'+ph+'" style="background:'+bg+';border:1px solid '+bc+';border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;user-select:none;'+col+outline+'">'+label+': <strong>'+cnt+'</strong></span>';
+    }
+    summary.innerHTML=
+      phSpan('phase-btn-1','#f1f5f9','#cbd5e1','','1','&#9711; Προς Ενέργεια',c1)+' '+
+      phSpan('phase-btn-2','#eff6ff','#93c5fd','','2','&#128309; Προς Υπογραφές',c2)+' '+
+      phSpan('phase-btn-4','#fee2e2','#fca5a5','color:#dc2626;','4','&#10060; Απορριφθέντα',c4)+' '+
+      phSpan('phase-btn-3','#f0fdf4','#86efac','','3','&#9989; Ολοκληρωμένα',c3)+
+      (fP?' <span data-phase="" style="background:#fef3c7;border:1px solid #fde68a;border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;font-size:11px">&#10005; Καθαρισμός</span>':'');
+    // Event delegation για phase buttons
+    summary.onclick=function(e){
+      var span=e.target.closest('[data-phase]');
+      if(!span) return;
+      var ph=span.getAttribute('data-phase');
+      window._protoPhaseFilter=(window._protoPhaseFilter===ph&&ph!=='')?'':ph;
+      renderProto();
+    };
   }
 }
 function acModalFak(inp,inpId,listId){
