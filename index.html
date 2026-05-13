@@ -3319,7 +3319,7 @@ function renderProto(){
       phSpan('phase-btn-2','#eff6ff','#93c5fd','','2','&#128309; Προς Υπογραφές',c2)+' '+
       phSpan('phase-btn-4','#fee2e2','#fca5a5','color:#dc2626;','4','&#10060; Απορριφθέντα',c4)+' '+
       phSpan('phase-btn-3','#f0fdf4','#86efac','','3','&#9989; Ολοκληρωμένα',c3)+
-      (fP?' <span data-phase="" style="background:#fef3c7;border:1px solid #fde68a;border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;font-size:11px">&#10005; Καθαρισμός</span>':'');
+      (fP?' <span data-phase="" title="Καθαρισμός φίλτρου" style="background:#fef3c7;border:1px solid #fde68a;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;font-weight:700;vertical-align:middle">&#10005;</span>':'');
     // Event delegation για phase buttons
     summary.onclick=function(e){
       var span=e.target.closest('[data-phase]');
@@ -4049,7 +4049,7 @@ function renderEquip(){
     const dianStr=(e.pumps||[]).length
       ?(e.pumps.filter(function(p){return p.type==='Διανομέας';}).length||'—')
       :(e.dian_lpg_cng||'—');
-    return `<tr>
+    return `<tr style="cursor:pointer;" onclick="openEquipModal('${esc(e.fak)}')" title="Κλικ για επεξεργασία">
       <td class="mono"><strong>${esc(e.fak)}</strong></td>
       <td class="muted" style="font-size:11px">${pumpsStr}</td>
       <td class="muted" style="font-size:11px">${tanksStr}</td>
