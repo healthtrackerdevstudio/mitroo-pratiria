@@ -10,7 +10,7 @@
   Η εφαρμογή αυτή αναπτύχθηκε για εσωτερική χρήση του τμήματος.
   Απαγορεύεται η αναδημοσίευση ή χρήση χωρίς άδεια του δημιουργού.
 
-  Έκδοση: v4.14
+  Έκδοση: v4.15
   Ημερομηνία: Μάρτιος 2026
   Επικοινωνία: ilias.papadakis@office365.attica.gov.gr
 =======================================================================
@@ -19,7 +19,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Μητρώο Εγκαταστάσεων v4.14</title>
+<title>Μητρώο Εγκαταστάσεων v4.15</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -395,7 +395,7 @@ const MiniDocGen = {
     </div>
     <div id="login-error" class="login-error" style="display:none"></div>
     <button class="btn btn-primary btn-full login-btn" onclick="doLogin()">Είσοδος</button>
-    <p class="login-footer">© 2026 Η.Π. — v4.14</p>
+    <p class="login-footer">© 2026 Η.Π. — v4.15</p>
   </div>
 </div>
 
@@ -404,7 +404,7 @@ const MiniDocGen = {
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand"><div class="dot"></div>Μητρώο Εγκαταστάσεων</div>
-    <span class="topbar-ver">v4.14</span>
+    <span class="topbar-ver">v4.15</span>
     <div class="topbar-spacer"></div>
     <span class="topbar-user" id="topbar-user"></span>
     <button class="btn btn-secondary btn-sm" id="btn-backup-all" onclick="backupData()" title="Αποθήκευση όλων των δεδομένων σε αρχείο JSON">💾 Backup</button>
@@ -612,13 +612,24 @@ const MiniDocGen = {
         <div class="search-box"><span class="search-icon">🔍</span><input id="proto-search" placeholder="ΦΑΚ, αιτών, αίτημα, αρ.πρωτ.…" oninput="renderProto()" onkeydown="clearOnEsc(this,'renderProto')"></div>
         <select class="filter-select" id="proto-f-sheet" onchange="renderProto()">
           <option value="">Όλα Τμήματα</option>
-          <option>Εγκαταστάσεις</option>
-          <option>ΕΧΕΣ</option>
-          <option>Αυτοκίνητα</option>
+          <option value="Εγκαταστάσεις">Εγκαταστάσεις</option>
+          <option value="Αυτοκίνητα">Αυτοκίνητα</option>
         </select>
-        <select class="filter-select" id="proto-f-year" onchange="renderProto()">
-          <option value="">Όλα Έτη</option>
-        </select>
+        <div style="position:relative;display:inline-block">
+          <button type="button" class="filter-select" id="proto-year-btn" 
+            onclick="toggleYearDropdown()" 
+            style="min-width:130px;text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+            <span id="proto-year-label">Όλα Έτη</span><span>▾</span>
+          </button>
+          <div id="proto-year-panel" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;min-width:130px;padding:8px 0">
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="proto-year-all" checked onchange="onYearAllChange(this)">
+              <strong>Όλα τα έτη</strong>
+            </label>
+            <hr style="margin:4px 0;border:none;border-top:1px solid #f0f4f8">
+            <div id="proto-year-checks"></div>
+          </div>
+        </div>
         <div class="toolbar-spacer"></div>
         <button class="btn btn-secondary btn-sm" onclick="exportProtoCSV()">⬇ CSV</button>
         <button class="btn btn-primary" onclick="openProtoModal()">+ Νέα Κίνηση</button>
@@ -2047,7 +2058,7 @@ function backupShared(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0');
   const payload={
-    version:'v4.14',
+    version:'v4.15',
     exported_at:now.toISOString(),
     type:'shared',
     inst:installations,
@@ -2096,7 +2107,7 @@ function backupData(){
   const now=new Date();
   const ts=now.getFullYear()+''+String(now.getMonth()+1).padStart(2,'0')+''+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+''+String(now.getMinutes()).padStart(2,'0');
   const payload={
-    version:'v4.14',
+    version:'v4.15',
     exported_at:now.toISOString(),
     inst:installations,
     proto:protocol,
@@ -2285,13 +2296,13 @@ function autoBackupOnLogout(){
     // Firebase mode: backup μόνο πρωτόκολλο (τα κοινά είναι στο Firebase)
     // Local mode: backup όλα
     const data = USE_FIREBASE ? {
-      version:'v4.14',
+      version:'v4.15',
       exported: new Date().toISOString(),
       type:'protocol_only',
       user: fbEmail,
       protocol
     } : {
-      version:'v4.14',
+      version:'v4.15',
       exported: new Date().toISOString(),
       type:'full',
       installations,protocol,certificates,equipment
@@ -3133,29 +3144,110 @@ function deleteInst(fak){
 function getProtoFiltered(){
   const q=(document.getElementById('proto-search')||{value:''}).value.toLowerCase();
   const fSheet=(document.getElementById('proto-f-sheet')||{value:''}).value;
-  const fYear=(document.getElementById('proto-f-year')||{value:''}).value;
+  const selYears=getSelectedYears();
+  const fPhase=window._protoPhaseFilter||'';
   let arr=[...protocol];
   if(q) arr=arr.filter(p=>(p.fak+p.aition+p.aitima+p.proto_eisx+p.proto_exerx+p.mixanikos+p.energeia).toLowerCase().includes(q));
   if(fSheet) arr=arr.filter(p=>p.sheet===fSheet);
-  if(fYear) arr=arr.filter(p=>(p.hm_xreosis||'').startsWith(fYear));
+  if(selYears.length>0) arr=arr.filter(p=>selYears.includes((p.hm_xreosis||'').substring(0,4)));
+  if(fPhase){
+    arr=arr.filter(p=>{
+      if(fPhase==='4') return !!p.rejected;
+      if(fPhase==='3') return !p.rejected && !!p.teliko;
+      if(fPhase==='2') return !p.rejected && !p.teliko && !!p.hm_exerx;
+      if(fPhase==='1') return !p.rejected && !p.teliko && !p.hm_exerx;
+      return true;
+    });
+  }
   // Υπολογισμός _phase για sorting: 1=Προς Ενέργεια, 2=Προς Υπογραφές, 3=Υπογεγραμμένο, 4=Απορρίφθηκε
   arr=arr.map(p=>({...p,_phase:p.rejected?'4':p.teliko?'3':p.hm_exerx?'2':'1'}));
   const{col,dir}=sortState.proto;
   arr.sort((a,b)=>(a[col]||'').localeCompare(b[col]||'')*dir);
   return arr;
 }
+
+// ══ PROTO PHASE FILTER ══
+window._protoPhaseFilter = '';
+window._protoYearFilter = [];
+
+function setProtoPhaseFilter(phase){
+  window._protoPhaseFilter = (window._protoPhaseFilter === phase) ? '' : phase;
+  renderProto();
+}
+
+function toggleYearDropdown(){
+  var p=document.getElementById('proto-year-panel');
+  if(!p) return;
+  p.style.display = p.style.display==='none' ? 'block' : 'none';
+  // Κλείσιμο με κλικ εκτός
+  if(p.style.display==='block'){
+    setTimeout(function(){
+      document.addEventListener('click', function closeYP(e){
+        if(!p.contains(e.target) && e.target.id!=='proto-year-btn'){
+          p.style.display='none';
+          document.removeEventListener('click', closeYP);
+        }
+      });
+    }, 100);
+  }
+}
+
+function onYearAllChange(cb){
+  var checks=document.querySelectorAll('#proto-year-checks input[type=checkbox]');
+  checks.forEach(function(c){ c.checked=cb.checked; });
+  updateYearLabel();
+  renderProto();
+}
+
+function onYearCbChange(){
+  var checks=document.querySelectorAll('#proto-year-checks input[type=checkbox]');
+  var all=document.getElementById('proto-year-all');
+  var allChecked=[...checks].every(function(c){return c.checked;});
+  if(all) all.checked=allChecked;
+  updateYearLabel();
+  renderProto();
+}
+
+function updateYearLabel(){
+  var checks=[...document.querySelectorAll('#proto-year-checks input[type=checkbox]:checked')];
+  var label=document.getElementById('proto-year-label');
+  if(!label) return;
+  var allCb=document.getElementById('proto-year-all');
+  if(allCb && allCb.checked){
+    label.textContent='Όλα Έτη';
+  } else if(checks.length===0){
+    label.textContent='Κανένα έτος';
+  } else if(checks.length===1){
+    label.textContent=checks[0].value;
+  } else {
+    label.textContent=checks.length+' έτη';
+  }
+}
+
+function getSelectedYears(){
+  var allCb=document.getElementById('proto-year-all');
+  if(allCb && allCb.checked) return [];
+  return [...document.querySelectorAll('#proto-year-checks input[type=checkbox]:checked')]
+    .map(function(c){return c.value;});
+}
+
 function populateYearFilter(){
   const years=[...new Set(
     protocol
       .map(p=>(p.hm_xreosis||'').substring(0,4))
       .filter(y=>y.length===4 && /^\d{4}$/.test(y) && parseInt(y)>=2000 && parseInt(y)<=2099)
   )].sort().reverse();
-  const sel=document.getElementById('proto-f-year');
-  if(!sel)return;
-  const cur=sel.value;
-  sel.innerHTML='<option value="">Όλα Έτη</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join('');
-  sel.value=cur;
+  const checks=document.getElementById('proto-year-checks');
+  if(!checks) return;
+  checks.innerHTML=years.map(y=>
+    `<label style="display:flex;align-items:center;gap:8px;padding:4px 12px;cursor:pointer;font-size:13px">
+      <input type="checkbox" value="${y}" checked onchange="onYearCbChange()"> ${y}
+    </label>`
+  ).join('');
+  updateYearLabel();
 }
+
+
 function renderProto(){
   const arr=getProtoFiltered();
   const tbody=document.getElementById('proto-tbody');
@@ -3209,11 +3301,22 @@ function renderProto(){
   const rejected=protocol.filter(p=>p.rejected).length;
   const summary=document.getElementById('proto-phase-summary');
   if(summary){
-    summary.innerHTML=
-      `<span style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:20px;padding:3px 10px;white-space:nowrap">⬜ Προς Ενέργεια: <strong>${phase1}</strong></span>`+
-      `<span style="background:#eff6ff;border:1px solid #93c5fd;border-radius:20px;padding:3px 10px;white-space:nowrap">🔵 Προς Υπογραφές: <strong>${phase2}</strong></span>`+
-      `<span style="background:#fee2e2;border:1px solid #fca5a5;border-radius:20px;padding:3px 10px;white-space:nowrap;color:#dc2626">❌ Απορριφθέντα: <strong>${rejected}</strong></span>`+
-      `<span style="background:#f0fdf4;border:1px solid #86efac;border-radius:20px;padding:3px 10px;white-space:nowrap;color:#16a34a">✅ Ολοκληρωμένα: <strong>${phase3}</strong></span>`;
+    var phBtns=[
+      ["phase-btn-1","#f1f5f9","#cbd5e1","","1","&#9711; Προς Ενέργεια",phase1],
+      ["phase-btn-2","#eff6ff","#93c5fd","","2","&#128309; Προς Υπογραφές",phase2],
+      ["phase-btn-4","#fee2e2","#fca5a5","color:#dc2626","4","&#10060; Απορριφθέντα",rejected],
+      ["phase-btn-3","#f0fdf4","#86efac","","3","&#9989; Ολοκληρωμένα",phase3]
+    ].map(function(b){
+      return '<span id="'+b[0]+'" style="background:'+b[1]+';border:1px solid '+b[2]+';border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;user-select:none;'+b[3]+'" onclick="setProtoPhaseFilter('+JSON.stringify(b[4])+')">'+b[5]+': <strong>'+b[6]+'</strong></span>';
+    });
+    if(window._protoPhaseFilter) phBtns.push('<span style="background:#fef3c7;border:1px solid #fde68a;border-radius:20px;padding:3px 10px;white-space:nowrap;cursor:pointer;font-size:11px" onclick="setProtoPhaseFilter('+JSON.stringify('')+')">&#10005; Καθαρισμός</span>');
+    summary.innerHTML=phBtns.join(' ');
+  // Highlight active phase button
+  ['1','2','3','4'].forEach(function(ph){
+    var btn=document.getElementById('phase-btn-'+ph);
+    if(btn){ btn.style.outline=window._protoPhaseFilter===ph?'3px solid #1a4a8a':'none';
+             btn.style.fontWeight=window._protoPhaseFilter===ph?'700':'400'; }
+  });
   }
 }
 function acModalFak(inp,inpId,listId){
@@ -4595,7 +4698,7 @@ function printInstReport(fak){
   }).join('')+'</div>');
   win.document.write('<strong>Δεξαμενές:</strong>'+tanksHtml);
   win.document.write('<h2>📄 Πιστοποιητικά</h2>'+certsHtml);
-  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.14</div>');
+  win.document.write('<div class="footer">© Τεχνικό Τμήμα Μεταφορών — ΠΕ Ανατολικής Αττικής — Μητρώο Πρατηρίων v4.15</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.focus();
